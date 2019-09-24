@@ -1,10 +1,10 @@
 ## Best Practice #1: Build Your Own Key Vault Securely  
 ### FileName: Own-Key-Vault.md
-Goal #1: Securely pass private key to GO Build Pipeline
-Goal #2: Securely integrate Jenkins pipeline, docker build 
+Goal #1: Securely pass private key to GO Build Pipeline from Key-Vault, instead of using ENV nor build-arg
+Goal #2: Securely integrate Jenkins pipeline, docker build, avoid exposing secrets via always-up-runing containers 
 
 ### Problem to resolve: 
-Our project has multiple modules built by GO, in order to build them by Jenkins pipeline, we need to pass the value of Private key to Dockerfile as Build ARG to access private repositories, which is insecure.
+Currently one of our projects has multiple modules built by GO, in order to build them by Jenkins pipeline, we need to pass the value of Private key to Dockerfile as Build ARG to access private repositories, which is insecure.
 
 ### Solution:
 Inspired from below post:
@@ -17,21 +17,21 @@ https://pythonspeed.com/articles/docker-build-secrets/
 
 ### Step 1: Save your private key as local file in EC2
 ```
-mkdir -p $HOME/tmp-key
-cd $HOME/tmp-key
-nano tmp-private-key
-sudo chmod 400 
+mkdir -p $HOME/tmp-key-folder
+cd $HOME/tmp-key-folder
+nano tmp-key-file
+sudo chmod 400 tmp-key-file
 ```
 ### Step 2: Spin up a tmp web service as key vault
 ```
-docker run --name=tmp-key-vault --rm --volume $HOME/tmp-key-folder:/tmp-key busybox httpd -f -p 9999 -h /tmp-key
+docker run --name=my-key-vault --rm --volume $HOME/tmp-key-folder:/tmp-key busybox httpd -f -p 9999 -h /tmp-key
 
 #Security check, can't telnet 9999
 telnet pub-ip 9999
 telnet localhost 9999
 
 # Only below works:
-Serv_name="tmp-key-vault"
+Serv_name="my-key-vault"
 IPS=`(sudo docker inspect ${Serv_name} | egrep -o '([0-9]+\.){3}[2-9]+')`
 IP=${IPS:0:10}
 echo $IP
@@ -56,7 +56,7 @@ git checkout develop
 export tag="ssh-test"
 docker build -t build-name:${tag} \
                 --build-arg BUILD_HASH="`git describe --match=M..R..tCh --always --abbrev=40 --dirty`" \
-                --network=container:tmp-key-vault ./
+                --network=container:my-key-vault ./
 ```
 
 ### Step 5:  Update Jenkins pipeline

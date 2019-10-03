@@ -64,3 +64,13 @@ docker build -t build-name:${tag} \
 Spin up the tmp key vault container before docker build
 
 Kill this tmp key server right after docker build
+```
+def Key_vault_name="jks_tmp-Key_vault_name"
+sh "docker restart ${Key_vault_name}"
+def BUILD_HASH="`git describe --match=Nexxx..h --always --abbrev=40 --dirty`"
+ 
+docker_img = docker.build("my-api:latest-test", "--build-arg BUILD_HASH=${BUILD_HASH} --network=container:${Key_vault_name} ./")
+// Another way: docker_img = sh " docker build -t ${build_name} --build-arg BUILD_HASH=${BUILD_HASH} --network=container:${Key_vault_name} ./"
+ 
+sh "docker stop ${Key_vault_name}"
+```
